@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 var IV uint64 = 0x00001000808c0001
 
 func encrypt(key BitString, Nonce BitString, AD BitString, P BitString) (BitString, BitString) {
@@ -23,7 +21,6 @@ func encrypt(key BitString, Nonce BitString, AD BitString, P BitString) (BitStri
 	if AD.Bits > 0 {
 		ADs, Am := parse(AD, 128)
 		ADs = append(ADs, pad(Am, 128))
-		fmt.Printf("ADs: %v\n", ADs)
 		for i := 0; i < len(ADs); i++ {
 			IS.S0 = IS.S0 ^ ADs[i][0]
 			IS.S1 = IS.S1 ^ ADs[i][1]
@@ -38,7 +35,6 @@ func encrypt(key BitString, Nonce BitString, AD BitString, P BitString) (BitStri
 
 	Ps, Pn := parse(P, 128)
 	l := P.Bits % 128
-	fmt.Printf("l: %d \n", l)
 	C := BitString{
 		Words: make([]uint64, 0),
 		Bits:  0,
@@ -95,7 +91,6 @@ func decrypt(key BitString, Nonce BitString, AD BitString, C BitString, T BitStr
 	if AD.Bits > 0 {
 		ADs, Am := parse(AD, 128)
 		ADs = append(ADs, pad(Am, 128))
-		fmt.Printf("ADs: %v\n", ADs)
 		for i := 0; i < len(ADs); i++ {
 			IS.S0 = IS.S0 ^ ADs[i][0]
 			IS.S1 = IS.S1 ^ ADs[i][1]
@@ -110,7 +105,6 @@ func decrypt(key BitString, Nonce BitString, AD BitString, C BitString, T BitStr
 
 	Cs, Cn := parse(C, 128)
 	l := C.Bits % 128
-	fmt.Printf("l: %d \n", l)
 	P := BitString{
 		Words: make([]uint64, 0),
 		Bits:  0,
@@ -124,13 +118,14 @@ func decrypt(key BitString, Nonce BitString, AD BitString, C BitString, T BitStr
 		IS.S1 = Cs[i][1]
 		IS.permute(8)
 	}
-	Pn := getPn(IS, l)
-	temp := pad(Cn, 128)
-	for i := 0; i < len(Pn); i++ {
-		Pn[i] = Pn[i] ^ temp[i]
+	temp := getPn(IS, l) // S[0:l-1]
+	CnLast := fromByteToUint64(Cn, l)
+	PnLast := make([]uint64, 0)
+	for i := 0; i < len(temp); i++ {
+		PnLast = append(PnLast, CnLast[i]^temp[i])
 	}
-	IS.S0 = IS.S0 ^ 0x8000000000000000
-	IS.S1 = IS.S1 ^ 0
+	IS.flipBitAtPos(l)
+	IS.setCnLast(CnLast, l)
 
 	IS.S0 = IS.S0 ^ 0
 	IS.S1 = IS.S1 ^ 0
@@ -144,7 +139,8 @@ func decrypt(key BitString, Nonce BitString, AD BitString, C BitString, T BitStr
 	Tprime = append(Tprime, IS.S3^key.Words[0], IS.S4^key.Words[1])
 
 	if Tprime[0] == T.Words[0] && Tprime[1] == T.Words[1] {
-		P.Words = append(P.Words, Pn...)
+		P.Words = append(P.Words, PnLast...)
+		P.Bits += l
 		return P
 	}
 	panic("Integrity check failed")

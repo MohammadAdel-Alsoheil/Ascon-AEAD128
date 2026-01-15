@@ -12,17 +12,18 @@ func main() {
 
 	key := []uint64{0x0001020304050607, 0x08090A0B0C0D0E0F}
 	nonce := []uint64{0x0001020304050607, 0x08090A0B0C0D0E0F}
-	AD := []uint64{0x0001020304050607, 0x08090A0B0C0D0E0F, 0x0001020304050607, 0x08090A0B0C0D0E0F, 0x0001020304050607, 0x08090A0B0C0D0E0F}
-	P := []uint64{0x0001020304050607, 0x08090A0B0C0D0E0F, 0x0001020304050607, 0x08090A0B0C0D0E0F, 0x0001020304050607, 0x08090A0B0C0D0E0F}
+	AD, ADBits := stringToUint64("HelloHelloHelloHHBBBB")   // 18
+	P, Pbits := stringToUint64("Hello, I love you so much") //24
+
 	start := time.Now()
-	C, T := encrypt(BitString{key, 128}, BitString{nonce, 128}, BitString{AD, 128 * 3}, BitString{P, 128 * 3})
+	C, T := encrypt(BitString{key, 128}, BitString{nonce, 128}, BitString{AD, ADBits}, BitString{P, Pbits})
 	fmt.Printf("took %v\\n, \n", time.Since(start).Nanoseconds())
 
-	fmt.Printf("C: %x\n", C.Words)
-	fmt.Printf("T: %x\n", T.Words)
+	fmt.Printf("CIPHER is : %s\n", Uint64ToString(C.Words, C.Bits))
+	fmt.Printf("TAG is: %s\n", Uint64ToString(T.Words, T.Bits))
 
 	start2 := time.Now()
-	Pa := decrypt(BitString{key, 128}, BitString{nonce, 128}, BitString{AD, 128 * 3}, C, T)
+	Pa := decrypt(BitString{key, 128}, BitString{nonce, 128}, BitString{AD, ADBits}, C, T)
 	fmt.Printf("took %v\\n, \n", time.Since(start2).Nanoseconds())
-	fmt.Printf("Pa: %x\n", Pa)
+	fmt.Printf("Deciphered PlainText is : %s \n", Uint64ToString(Pa.Words, Pa.Bits))
 }
